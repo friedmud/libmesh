@@ -1127,6 +1127,7 @@ namespace Parallel
    * The default libMesh communicator
    */
   extern Parallel::Communicator CommWorld;
+  //extern Parallel::Communicator CommWorldDefault;
 
 } // namespace libMesh
 
