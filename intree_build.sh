@@ -13,7 +13,8 @@ cd $LIBMESH_DIR
             --with-methods="${METHODS}" \
             --enable-legacy-using-namespace \
             --enable-openmp \
-            --disable-tbb
+            --disable-tbb \
+            --disable-blocked-storage
 #./configure --prefix=${LIBMESH_DIR} --with-methods="${METHODS}" --enable-legacy-include-paths --enable-legacy-using-namespace  --enable-netcdf=new --enable-exodus=new --enable-nemesis=new --disable-hdf5
 
 make -j $JOBS
