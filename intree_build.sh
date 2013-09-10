@@ -18,7 +18,7 @@ cd $LIBMESH_DIR
             --disable-trilinos
 #./configure --prefix=${LIBMESH_DIR} --with-methods="${METHODS}" --enable-legacy-include-paths --enable-legacy-using-namespace  --enable-netcdf=new --enable-exodus=new --enable-nemesis=new --disable-hdf5
 
-make -j $JOBS
+dmake
 
 # "Fake" make install - do one extra step which (so far!) lets us avoid a full-blown make install
 #mkdir -p lib
