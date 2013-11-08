@@ -260,7 +260,7 @@ namespace MeshTools
   /**
    * Return the number of levels of refinement in the active mesh.
    * Implemented by looping over all the active local elements and finding
-   * the maximum level, then summing in parallel.
+   * the maximum level, then maxxing in parallel.
    */
   unsigned int n_active_levels(const MeshBase &mesh);
 
@@ -270,6 +270,21 @@ namespace MeshTools
    * the maximum level.
    */
   unsigned int n_active_local_levels(const MeshBase &mesh);
+
+  /**
+   * Return the number of levels of refinement in the active local mesh.
+   * Implemented by looping over all the active local elements and finding
+   * the maximum level.
+   */
+  unsigned int n_active_local_levels(const MeshBase &mesh);
+
+/**
+   * Return the number of levels of refinement in the active mesh on this processor.
+   * NOTE: This includes _all_ elements on this processor even those not owned by this processor!
+   * Implemented by looping over all the active elements and finding
+   * the maximum level.
+   */
+  unsigned int n_active_levels_on_processor(const MeshBase &mesh);
 
   /**
    * Return the number of p-levels of refinement in the mesh.

@@ -585,6 +585,20 @@ unsigned int MeshTools::n_active_local_levels(const MeshBase& mesh)
 }
 
 
+unsigned int MeshTools::n_active_levels_on_processor(const MeshBase &mesh)
+{
+  unsigned int max_level = 0;
+
+  MeshBase::const_element_iterator el = mesh.active_elements_begin();
+  const MeshBase::const_element_iterator end_el = mesh.active_elements_end();
+
+  for( ; el != end_el; ++el)
+    max_level = std::max((*el)->level(), max_level);
+
+  return max_level + 1;
+}
+
+
 
 unsigned int MeshTools::n_active_levels(const MeshBase& mesh)
 {
