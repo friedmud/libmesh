@@ -11,11 +11,12 @@ cd $LIBMESH_DIR
 # Note: even though we won't run 'make install' still specify a prefix!
 ./configure --prefix=${LIBMESH_DIR} \
             --with-methods="${METHODS}" \
-            --enable-legacy-using-namespace \
             --enable-openmp \
             --disable-tbb \
-            --disable-blocked-storage \
-            --disable-trilinos
+            --disable-trilinos \
+            --disable-warnings \
+            --enable-silent-rules \
+            --enable-unique-id
 #./configure --prefix=${LIBMESH_DIR} --with-methods="${METHODS}" --enable-legacy-include-paths --enable-legacy-using-namespace  --enable-netcdf=new --enable-exodus=new --enable-nemesis=new --disable-hdf5
 
 dmake
