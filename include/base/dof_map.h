@@ -520,6 +520,17 @@ public:
 		    const unsigned int vn) const;
 
   /**
+   * Get the dof indices for many variables of the same type.
+   *
+   * Note: The variables should have the same type AND the same
+   * distribution in the domain (ie, they should be restricted to the
+   * same subdomains or not restricted at all).
+   */
+  void dof_indices_for_vars_of_same_type (const Elem* const elem,
+                                          std::vector<std::vector<dof_id_type> > & indices,
+                                          const std::vector<unsigned int> & vars) const;
+
+  /**
    * Fills the vector \p di with the global degree of freedom indices
    * corresponding to the SCALAR variable vn. If old_dofs=true,
    * the old SCALAR dof indices are returned. Note that we do not
