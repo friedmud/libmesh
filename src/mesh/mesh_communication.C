@@ -492,7 +492,10 @@ void MeshCommunication::gather_neighboring_elements (ParallelMesh & mesh) const
                   UniquePtr<Elem> side(elem->build_side(s));
 
                   for (unsigned int n=0; n<side->n_vertices(); n++)
+                  {
+                    std::cout<<"Interface node: "<<side->node(n)<<std::endl;
                     my_interface_node_set.insert (side->node(n));
+                  }
                 }
           }
       }
@@ -761,6 +764,427 @@ void MeshCommunication::gather_neighboring_elements (ParallelMesh & mesh) const
   STOP_LOG("gather_neighboring_elements()","MeshCommunication");
 }
 #endif // LIBMESH_HAVE_MPI
+
+
+
+
+
+#ifndef LIBMESH_HAVE_MPI // avoid spurious gcc warnings
+// ------------------------------------------------------------
+static void MeshCommunication::gather_more_neighboring_elements (ParallelMesh &)
+{
+  // no MPI == one processor, no need for this method...
+  return;
+}
+#else
+// ------------------------------------------------------------
+void MeshCommunication::gather_more_neighboring_elements (ParallelMesh & mesh)
+{
+  std::cout<<"gather_more_neighboring_elements"<<std::endl;
+
+  unsigned int layers = 2;
+
+  // Don't need to do anything if there is
+  // only one processor.
+  if (mesh.n_processors() == 1)
+    return;
+
+  // This function must be run on all processors at once
+  libmesh_parallel_only(mesh.comm());
+
+  START_LOG("gather_neighboring_elements()","MeshCommunication");
+
+  //------------------------------------------------------------------
+  // The purpose of this function is to provide neighbor data structure
+  // consistency for a parallel, distributed mesh.  In libMesh we require
+  // that each local element have access to a full set of valid face
+  // neighbors.  In some cases this requires us to store "ghost elements" -
+  // elements that belong to other processors but we store to provide
+  // data structure consistency.  Also, it is assumed that any element
+  // with a NULL neighbor resides on a physical domain boundary.  So,
+  // even our "ghost elements" must have non-NULL neighbors.  To handle
+  // this the concept of "RemoteElem" is used - a special construct which
+  // is used to denote that an element has a face neighbor, but we do
+  // not actually store detailed information about that neighbor.  This
+  // is required to prevent data structure explosion.
+  //
+  // So when this method is called we should have only local elements.
+  // These local elements will then find neighbors among the local
+  // element set.  After this is completed, any element with a NULL
+  // neighbor has either (i) a face on the physical boundary of the mesh,
+  // or (ii) a neighboring element which lives on a remote processor.
+  // To handle case (ii), we communicate the global node indices connected
+  // to all such faces to our neighboring processors.  They then send us
+  // all their elements with a NULL neighbor that are connected to any
+  // of the nodes in our list.
+  //------------------------------------------------------------------
+
+  // Let's begin with finding consistent neighbor data information
+  // for all the elements we currently have.  We'll use a clean
+  // slate here - clear any existing information, including RemoteElem's.
+  mesh.find_neighbors (true, true);
+
+  // Get a unique message tag to use in communications; we'll default
+  // to some numbers around pi*10000
+  Parallel::MessageTag
+    element_neighbors_tag = mesh.comm().get_unique_tag(31416);
+
+  // Now any element with a NULL neighbor either
+  // (i) lives on the physical domain boundary, or
+  // (ii) lives on an inter-processor boundary.
+  // We will now gather all the elements from adjacent processors
+  // which are of the same state, which should address all the type (ii)
+  // elements.
+
+  // A list of all the processors which *may* contain neighboring elements.
+  // (for development simplicity, just make this the identity map)
+  std::vector<processor_id_type> adjacent_processors;
+  for (processor_id_type pid=0; pid<mesh.n_processors(); pid++)
+    if (pid != mesh.processor_id())
+      adjacent_processors.push_back (pid);
+
+
+  const processor_id_type n_adjacent_processors =
+    cast_int<processor_id_type>(adjacent_processors.size());
+
+  //-------------------------------------------------------------------------
+  // Let's build a list of all nodes which live on NULL-neighbor sides.
+  // For simplicity, we will use a set to build the list, then transfer
+  // it to a vector for communication.
+  std::vector<dof_id_type> my_interface_node_list;
+  std::vector<const Elem *>  my_interface_elements;
+  {
+    std::set<dof_id_type> my_interface_node_set;
+
+    // since parent nodes are a subset of children nodes, this should be sufficient
+    MeshBase::const_element_iterator       it     = mesh.active_elements_begin();
+    const MeshBase::const_element_iterator it_end = mesh.active_elements_end();
+
+    for (; it != it_end; ++it)
+      {
+        const Elem * const elem = *it;
+        libmesh_assert(elem);
+
+        if (elem->on_boundary()) // denotes *any* side has a NULL neighbor
+          {
+            my_interface_elements.push_back(elem); // add the element, but only once, even
+            // if there are multiple NULL neighbors
+            for (unsigned int s=0; s<elem->n_sides(); s++)
+              if (elem->neighbor(s) == libmesh_nullptr)
+                {
+                  UniquePtr<Elem> side(elem->build_side(s));
+
+                  for (unsigned int n=0; n<side->n_vertices(); n++)
+                  {
+                    std::cout<<"Interface node: "<<side->node(n)<<std::endl;
+
+                    my_interface_node_set.insert (side->node(n));
+                  }
+                }
+          }
+      }
+
+    my_interface_node_list.reserve (my_interface_node_set.size());
+    my_interface_node_list.insert  (my_interface_node_list.end(),
+                                    my_interface_node_set.begin(),
+                                    my_interface_node_set.end());
+  }
+
+  // we will now send my_interface_node_list to all of the adjacent processors.
+  // note that for the time being we will copy the list to a unique buffer for
+  // each processor so that we can use a nonblocking send and not access the
+  // buffer again until the send completes.  it is my understanding that the
+  // MPI 2.1 standard seeks to remove this restriction as unnecessary, so in
+  // the future we should change this to send the same buffer to each of the
+  // adjacent processors. - BSK 11/17/2008
+  std::vector<std::vector<dof_id_type> >
+    my_interface_node_xfer_buffers (n_adjacent_processors, my_interface_node_list);
+  std::map<processor_id_type, unsigned char> n_comm_steps;
+
+  std::vector<Parallel::Request> send_requests (3*n_adjacent_processors);
+  unsigned int current_request = 0;
+
+  for (unsigned int comm_step=0; comm_step<n_adjacent_processors; comm_step++)
+    {
+      n_comm_steps[adjacent_processors[comm_step]]=1;
+      mesh.comm().send (adjacent_processors[comm_step],
+                        my_interface_node_xfer_buffers[comm_step],
+                        send_requests[current_request++],
+                        element_neighbors_tag);
+    }
+
+  //-------------------------------------------------------------------------
+  // processor pairings are symmetric - I expect to receive an interface node
+  // list from each processor in adjacent_processors as well!
+  // now we will catch an incoming node list for each of our adjacent processors.
+  //
+  // we are done with the adjacent_processors list - note that it is in general
+  // a superset of the processors we truly share elements with.  so let's
+  // clear the superset list, and we will fill it with the true list.
+  adjacent_processors.clear();
+
+  std::vector<dof_id_type> common_interface_node_list;
+
+  // we expect two classess of messages -
+  // (1) incoming interface node lists, to which we will reply with our elements
+  //     touching nodes in the list, and
+  // (2) replies from the requests we sent off previously.
+  //  (2.a) - nodes
+  //  (2.b) - elements
+  // so we expect 3 communications from each adjacent processor.
+  // by structuring the communication in this way we hopefully impose no
+  // order on the handling of the arriving messages.  in particular, we
+  // should be able to handle the case where we receive a request and
+  // all replies from processor A before even receiving a request from
+  // processor B.
+
+  for (unsigned int comm_step=0; comm_step<3*n_adjacent_processors; comm_step++)
+    {
+      //------------------------------------------------------------------
+      // catch incoming node list
+      Parallel::Status
+        status(mesh.comm().probe (Parallel::any_source,
+                                  element_neighbors_tag));
+      const processor_id_type
+        source_pid_idx = cast_int<processor_id_type>(status.source()),
+        dest_pid_idx   = source_pid_idx;
+
+      //------------------------------------------------------------------
+      // first time - incoming request
+      if (n_comm_steps[source_pid_idx] == 1)
+        {
+          n_comm_steps[source_pid_idx]++;
+
+          mesh.comm().receive (source_pid_idx,
+                               common_interface_node_list,
+                               element_neighbors_tag);
+          const std::size_t
+            their_interface_node_list_size = common_interface_node_list.size();
+
+          // we now have the interface node list from processor source_pid_idx.
+          // now we can find all of our elements which touch any of these nodes
+          // and send copies back to this processor.  however, we can make our
+          // search more efficient by first excluding all the nodes in
+          // their list which are not also contained in
+          // my_interface_node_list.  we can do this in place as a set
+          // intersection.
+          common_interface_node_list.erase
+            (std::set_intersection (my_interface_node_list.begin(),
+                                    my_interface_node_list.end(),
+                                    common_interface_node_list.begin(),
+                                    common_interface_node_list.end(),
+                                    common_interface_node_list.begin()),
+             common_interface_node_list.end());
+
+          if (false)
+            libMesh::out << "[" << mesh.processor_id() << "] "
+                         << "my_interface_node_list.size()="       << my_interface_node_list.size()
+                         << ", [" << source_pid_idx << "] "
+                         << "their_interface_node_list.size()="    << their_interface_node_list_size
+                         << ", common_interface_node_list.size()=" << common_interface_node_list.size()
+                         << std::endl;
+
+          // Now we need to see which of our elements touch the nodes in the list.
+          // We will certainly send all the active elements which intersect source_pid_idx,
+          // but we will also ship off the other elements in the same family tree
+          // as the active ones for data structure consistency.
+          //
+          // FIXME - shipping full family trees is unnecessary and inefficient.
+          //
+          // We also ship any nodes connected to these elements.  Note
+          // some of these nodes and elements may be replicated from
+          // other processors, but that is OK.
+          std::set<const Elem *, CompareElemIdsByLevel> elements_to_send;
+          std::set<const Node *> connected_nodes;
+
+          // Check for quick return?
+          if (common_interface_node_list.empty())
+            {
+              // let's try to be smart here - if we have no nodes in common,
+              // we cannot share elements.  so post the messages expected
+              // from us here and go on about our business.
+              // note that even though these are nonblocking sends
+              // they should complete essentially instantly, because
+              // in all cases the send buffers are empty
+              mesh.comm().send_packed_range (dest_pid_idx,
+                                             &mesh,
+                                             connected_nodes.begin(),
+                                             connected_nodes.end(),
+                                             send_requests[current_request++],
+                                             element_neighbors_tag);
+
+              mesh.comm().send_packed_range (dest_pid_idx,
+                                             &mesh,
+                                             elements_to_send.begin(),
+                                             elements_to_send.end(),
+                                             send_requests[current_request++],
+                                             element_neighbors_tag);
+
+              continue;
+            }
+          // otherwise, this really *is* an adjacent processor.
+          adjacent_processors.push_back(source_pid_idx);
+
+          std::vector<const Elem *> family_tree;
+
+          for (dof_id_type e=0, n_shared_nodes=0; e<my_interface_elements.size(); e++, n_shared_nodes=0)
+            {
+              const Elem * elem = my_interface_elements[e];
+
+              for (unsigned int n=0; n<elem->n_vertices(); n++)
+                if (std::binary_search (common_interface_node_list.begin(),
+                                        common_interface_node_list.end(),
+                                        elem->node(n)))
+                  {
+                    n_shared_nodes++;
+
+                    // TBD - how many nodes do we need to share
+                    // before we care?  certainly 2, but 1?  not
+                    // sure, so let's play it safe...
+                    if (n_shared_nodes > 0) break;
+                  }
+
+              if (n_shared_nodes) // share at least one node?
+                {
+                  elem = elem->top_parent();
+
+                  // avoid a lot of duplicated effort -- if we already have elem
+                  // in the set its entire family tree is already in the set.
+                  if (!elements_to_send.count(elem))
+                    {
+#ifdef LIBMESH_ENABLE_AMR
+                      elem->family_tree(family_tree);
+#else
+                      family_tree.clear();
+                      family_tree.push_back(elem);
+#endif
+                      for (unsigned int leaf=0; leaf<family_tree.size(); leaf++)
+                        {
+                          elem = family_tree[leaf];
+                          elements_to_send.insert (elem);
+
+                          for (unsigned int n=0; n<elem->n_nodes(); n++)
+                            connected_nodes.insert (elem->get_node(n));
+                        }
+                    }
+
+                  // Add in their neighbors
+                  for (unsigned int i=0; i < elem->n_sides(); i++)
+                  {
+                    Elem * neighbor = elem->neighbor(i);
+
+                    // If we own this elem, let's send it off
+                    if (neighbor->processor_id() == mesh.processor_id())
+                    {
+                      const Elem * neighbor_top = neighbor->top_parent();
+
+                      // avoid a lot of duplicated effort -- if we already have elem
+                      // in the set its entire family tree is already in the set.
+                      if (!elements_to_send.count(neighbor_top))
+                      {
+#ifdef LIBMESH_ENABLE_AMR
+                        neighbor_top->family_tree(family_tree);
+#else
+                        family_tree.clear();
+                        family_tree.push_back(neighbor_top);
+#endif
+                        for (unsigned int leaf=0; leaf<family_tree.size(); leaf++)
+                        {
+                          neighbor_top = family_tree[leaf];
+                          elements_to_send.insert (neighbor_top);
+
+                          for (unsigned int n=0; n<neighbor_top->n_nodes(); n++)
+                            connected_nodes.insert (neighbor_top->get_node(n));
+                        }
+                      }
+                    }
+                  }
+                }
+            }
+
+          // The elements_to_send and connected_nodes sets now contain all
+          // the elements and nodes we need to send to this processor.
+          // All that remains is to pack up the objects (along with
+          // any boundary conditions) and send the messages off.
+          {
+            libmesh_assert (connected_nodes.empty() || !elements_to_send.empty());
+            libmesh_assert (!connected_nodes.empty() || elements_to_send.empty());
+
+            // send the nodes off to the destination processor
+            mesh.comm().send_packed_range (dest_pid_idx,
+                                           &mesh,
+                                           connected_nodes.begin(),
+                                           connected_nodes.end(),
+                                           send_requests[current_request++],
+                                           element_neighbors_tag);
+
+            // send the elements off to the destination processor
+            mesh.comm().send_packed_range (dest_pid_idx,
+                                           &mesh,
+                                           elements_to_send.begin(),
+                                           elements_to_send.end(),
+                                           send_requests[current_request++],
+                                           element_neighbors_tag);
+          }
+        }
+      //------------------------------------------------------------------
+      // second time - reply of nodes
+      else if (n_comm_steps[source_pid_idx] == 2)
+        {
+          n_comm_steps[source_pid_idx]++;
+
+          mesh.comm().receive_packed_range (source_pid_idx,
+                                            &mesh,
+                                            mesh_inserter_iterator<Node>(mesh),
+                                            (Node**)libmesh_nullptr,
+                                            element_neighbors_tag);
+        }
+      //------------------------------------------------------------------
+      // third time - reply of elements
+      else if (n_comm_steps[source_pid_idx] == 3)
+        {
+          n_comm_steps[source_pid_idx]++;
+
+          mesh.comm().receive_packed_range (source_pid_idx,
+                                            &mesh,
+                                            mesh_inserter_iterator<Elem>(mesh),
+                                            (Elem**)libmesh_nullptr,
+                                            element_neighbors_tag);
+        }
+      //------------------------------------------------------------------
+      // fourth time - shouldn't happen
+      else
+        {
+          libMesh::err << "ERROR:  unexpected number of replies: "
+                       << n_comm_steps[source_pid_idx]
+                       << std::endl;
+        }
+    } // done catching & processing replies associated with tag ~ 100,000pi
+
+  // allow any pending requests to complete
+  Parallel::wait (send_requests);
+
+  // We can now find neighbor information for the interfaces between
+  // local elements and ghost elements.
+  mesh.find_neighbors (/* reset_remote_elements = */ true,
+                       /* reset_current_list    = */ false);
+
+  // Ghost elements may not have correct remote_elem neighbor links,
+  // and we may not be able to locally infer correct neighbor links to
+  // remote elements.  So we synchronize ghost element neighbor links.
+  SyncNeighbors nsync(mesh);
+
+  Parallel::sync_dofobject_data_by_id
+    (mesh.comm(), mesh.elements_begin(), mesh.elements_end(), nsync);
+
+  STOP_LOG("gather_neighboring_elements()","MeshCommunication");
+}
+#endif // LIBMESH_HAVE_MPI
+
+
+
+
+
 
 
 #ifndef LIBMESH_HAVE_MPI // avoid spurious gcc warnings

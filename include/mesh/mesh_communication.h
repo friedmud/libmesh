@@ -99,6 +99,11 @@ public:
   void gather_neighboring_elements (ParallelMesh &) const;
 
   /**
+   * Add another layer of ghost elements
+   */
+  static void gather_more_neighboring_elements (ParallelMesh &);
+
+  /**
    * This method takes an input \p ParallelMesh which may be
    * distributed among all the processors.  Each processor then
    * sends its local nodes and elements to processor \p root_id.
