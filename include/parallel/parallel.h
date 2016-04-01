@@ -1012,6 +1012,15 @@ public:
                                          Request & req,
                                          Status & stat,
                                          const MessageTag & tag=any_tag) const;
+  
+  template <typename Context, typename OutputIter, typename T>
+  void blocking_receive_packed_range (const unsigned int src_processor_id,
+                                         Context * context,
+                                         OutputIter out,
+                                         const T * output_type,
+                                         Request & req,
+                                         Status & stat,
+                                         const MessageTag & tag=any_tag) const;
 
   /**
    * Send data \p send to one processor while simultaneously receiving

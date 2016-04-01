@@ -2737,6 +2737,38 @@ inline void Communicator::nonblocking_receive_packed_range (const unsigned int s
   // after the Request::wait()
   std::vector<buffer_t> * buffer = new std::vector<buffer_t>(stat.size());
   this->receive(src_processor_id, *buffer, req, tag);
+//  this->receive(src_processor_id, *buffer, tag);
+  
+
+  // Make the Request::wait() handle unpacking the buffer
+  req.add_post_wait_work
+    (new Parallel::PostWaitUnpackBuffer<std::vector<buffer_t>, Context, OutputIter, T>(*buffer, context, out));
+
+  // Make the Request::wait() then handle deleting the buffer
+  req.add_post_wait_work
+    (new Parallel::PostWaitDeleteBuffer<std::vector<buffer_t> >(buffer));
+}
+
+
+template <typename Context, typename OutputIter, typename T>
+inline void Communicator::blocking_receive_packed_range (const unsigned int src_processor_id,
+                                                            Context * context,
+                                                            OutputIter out,
+                                                            const T * /* output_type */,
+                                                            Request & req,
+                                                            Status & stat,
+                                                            const MessageTag & tag) const
+{
+  typedef typename Parallel::Packing<T>::buffer_type buffer_t;
+
+  // Receive serialized variable size objects as a sequence of
+  // buffer_t.
+  // Allocate a buffer on the heap so we don't have to free it until
+  // after the Request::wait()
+  std::vector<buffer_t> * buffer = new std::vector<buffer_t>(stat.size());
+//  this->receive(src_processor_id, *buffer, req, tag);
+  this->receive(src_processor_id, *buffer, tag);
+  
 
   // Make the Request::wait() handle unpacking the buffer
   req.add_post_wait_work
