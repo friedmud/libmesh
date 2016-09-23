@@ -40,6 +40,7 @@
 #include "libmesh/libmesh_logging.h"
 #include "libmesh/mesh_communication.h"
 #include "libmesh/parallel_mesh.h"
+#include "libmesh/default_coupling.h"
 
 namespace libMesh
 {
@@ -158,30 +159,65 @@ void CheckpointIO::build_elem_list()
 {
   const MeshBase & mesh = MeshOutput<MeshBase>::mesh();
 
-  MeshBase::const_element_iterator it = mesh.elements_begin();
-  MeshBase::const_element_iterator end = mesh.elements_end();
-
-  if (_parallel)
+  // Add in the local elements
+  /*
   {
-    it  = mesh.pid_elements_begin(_my_processor_id);
-    end = mesh.pid_elements_end(_my_processor_id);
+    MeshBase::const_element_iterator it = mesh.elements_begin();
+    MeshBase::const_element_iterator end = mesh.elements_end();
+
+    if (_parallel)
+    {
+      it  = mesh.pid_elements_begin(_my_processor_id);
+      end = mesh.pid_elements_end(_my_processor_id);
+    }
+
+    std::set<const Elem *> neighbors;
+
+    for (; it != end; ++it)
+    {
+      Elem * elem = *it;
+
+      _local_elements.insert(elem->id());
+
+      // Also need to add in all the point neighbors of this element
+      elem->find_point_neighbors(neighbors);
+
+      for (std::set<const Elem *>::iterator it = neighbors.begin();
+           it != neighbors.end();
+           ++it)
+        _local_elements.insert((*it)->id());
+    }
   }
+  */
 
-  std::set<const Elem *> neighbors;
-
-  for (; it != end; ++it)
+  // Add in the halo elements (remote elements connected to the local elements)
   {
-    Elem * elem = *it;
+    MeshBase::const_element_iterator it = mesh.elements_begin();
+    MeshBase::const_element_iterator end = mesh.elements_end();
 
-    _local_elements.insert(elem->id());
+    if (_parallel)
+    {
+      it  = mesh.pid_elements_begin(_my_processor_id);
+      end = mesh.pid_elements_end(_my_processor_id);
+    }
 
-    // Also need to add in all the point neighbors of this element
-    elem->find_point_neighbors(neighbors);
+    DefaultCoupling coupling_functor;
 
-    for (std::set<const Elem *>::iterator it = neighbors.begin();
-         it != neighbors.end();
-         ++it)
-      _local_elements.insert((*it)->id());
+    coupling_functor.set_n_levels(2);
+
+    GhostingFunctor::map_type results;
+
+    // We pass `DofObject::invalid_processor_id` here to force the coupling functor
+    // to add _all_ of the elements it runs across... even the "local" ones
+    coupling_functor(it, end, DofObject::invalid_processor_id, results);
+    // coupling_functor(it, end, _my_processor_id, results);
+
+    // Now loop over the results and pull out the elems
+    GhostingFunctor::map_type::const_iterator rit = results.begin();
+    const GhostingFunctor::map_type::const_iterator rend = results.end();
+
+    for ( ; rit != rend; ++rit)
+      _local_elements.insert(rit->first->id());
   }
 }
 
