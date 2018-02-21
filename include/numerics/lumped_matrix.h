@@ -25,6 +25,7 @@
 // Local includes
 #include "libmesh/sparse_matrix.h"
 #include "libmesh/parallel.h"
+#include "libmesh/numeric_vector.h"
 
 // C++ includes
 #include <algorithm>
@@ -219,5 +220,4 @@ protected:
 
 } // namespace libMesh
 
-#endif
 #endif

@@ -15,7 +15,6 @@
 // License along with this library; if not, write to the Free Software
 // Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-
 // C++ includes
 #include <unistd.h> // mkstemp
 #include <fstream>
@@ -23,12 +22,9 @@
 #include "libmesh/libmesh_config.h"
 
 // Local includes
+#include "libmesh/lumped_matrix.h"
 #include "libmesh/dof_map.h"
 #include "libmesh/dense_matrix.h"
-
-namespace
-{
-using namespace libMesh;
 
 namespace libMesh
 {
@@ -41,42 +37,23 @@ namespace libMesh
 // Constructor
 template <typename T>
 LumpedMatrix<T>::LumpedMatrix(const Parallel::Communicator & comm_in) :
-  SparseMatrix<T>(comm_in),
-  _destroy_mat_on_exit(true)
+  SparseMatrix<T>(comm_in)
 {}
-
-
-
-// Constructor taking an existing Mat but not the responsibility
-// for destroying it
-template <typename T>
-LumpedMatrix<T>::LumpedMatrix(Mat mat_in,
-                            const Parallel::Communicator & comm_in) :
-  SparseMatrix<T>(comm_in),
-  _destroy_mat_on_exit(false)
-{
-  this->_mat = mat_in;
-  this->_is_initialized = true;
-}
-
-
 
 // Destructor
 template <typename T>
 LumpedMatrix<T>::~LumpedMatrix()
-{
-  this->clear();
-}
+{}
 
 
 template <typename T>
 void LumpedMatrix<T>::init (const numeric_index_type m_in,
-                           const numeric_index_type n_in,
-                           const numeric_index_type m_l,
-                           const numeric_index_type n_l,
-                           const numeric_index_type nnz,
-                           const numeric_index_type noz,
-                           const numeric_index_type blocksize_in)
+                            const numeric_index_type /*n_in*/,
+                            const numeric_index_type m_l,
+                            const numeric_index_type /*n_l*/,
+                            const numeric_index_type /*nnz*/,
+                            const numeric_index_type /*noz*/,
+                            const numeric_index_type blocksize_in)
 {
   // So compilers don't warn when !LIBMESH_ENABLE_BLOCKED_STORAGE
   libmesh_ignore(blocksize_in);
@@ -87,7 +64,7 @@ void LumpedMatrix<T>::init (const numeric_index_type m_in,
 
   this->_is_initialized = true;
 
-  _vector = NumericVector<T>::build(communicator());
+  _vector = NumericVector<T>::build(this->comm());
 
   _vector->init(m_in, m_l);
 }
@@ -95,14 +72,25 @@ void LumpedMatrix<T>::init (const numeric_index_type m_in,
 
 template <typename T>
 void LumpedMatrix<T>::init (const numeric_index_type m_in,
-                           const numeric_index_type n_in,
-                           const numeric_index_type m_l,
-                           const numeric_index_type n_l,
-                           const std::vector<numeric_index_type> & n_nz,
-                           const std::vector<numeric_index_type> & n_oz,
-                           const numeric_index_type blocksize_in)
+                            const numeric_index_type /* n_in */,
+                            const numeric_index_type m_l,
+                            const numeric_index_type /* n_l */,
+                            const std::vector<numeric_index_type> & /* n_nz */,
+                            const std::vector<numeric_index_type> & /* n_oz */,
+                            const numeric_index_type blocksize_in)
 {
-  libmesh_not_implemented();
+  // So compilers don't warn when !LIBMESH_ENABLE_BLOCKED_STORAGE
+  libmesh_ignore(blocksize_in);
+
+  // Clear initialized matrices
+  if (this->initialized())
+    this->clear();
+
+  this->_is_initialized = true;
+
+  _vector = NumericVector<T>::build(this->comm());
+
+  _vector->init(m_in, m_l);
 }
 
 
@@ -119,11 +107,11 @@ void LumpedMatrix<T>::init ()
 
 
   const numeric_index_type my_m = this->_dof_map->n_dofs();
-  const numeric_index_type my_n = my_m;
+  // const numeric_index_type my_n = my_m;
   const numeric_index_type n_l  = this->_dof_map->n_dofs_on_processor(this->processor_id());
   const numeric_index_type m_l  = n_l;
 
-  _vector = NumericVector<T>::build(communicator());
+  _vector = NumericVector<T>::build(this->comm());
 
   _vector->init(my_m, m_l);
 }
@@ -150,13 +138,13 @@ void LumpedMatrix<T>::zero_rows (std::vector<numeric_index_type> & rows, T diag_
   libmesh_assert (this->initialized());
 
   for (size_t i = 0; i < rows.size(); i++)
-    _vector->set(rows[i]) = diag_value;
+    _vector->set(rows[i], diag_value);
 }
 
 template <typename T>
 void LumpedMatrix<T>::clear ()
 {
-  _vector->release();
+  _vector.reset(nullptr);
 }
 
 
@@ -178,7 +166,7 @@ Real LumpedMatrix<T>::linfty_norm () const
 
 
 template <typename T>
-void LumpedMatrix<T>::print_matlab (const std::string & name) const
+void LumpedMatrix<T>::print_matlab (const std::string & /*name*/) const
 {
   libmesh_not_implemented();
 }
@@ -188,7 +176,7 @@ void LumpedMatrix<T>::print_matlab (const std::string & name) const
 
 
 template <typename T>
-void LumpedMatrix<T>::print_personal(std::ostream & os) const
+void LumpedMatrix<T>::print_personal(std::ostream & /*os*/) const
 {
   libmesh_not_implemented();
 }
@@ -200,17 +188,19 @@ void LumpedMatrix<T>::print_personal(std::ostream & os) const
 
 template <typename T>
 void LumpedMatrix<T>::add_matrix(const DenseMatrix<T> & dm,
-                                const std::vector<numeric_index_type> & rows,
-                                const std::vector<numeric_index_type> & cols)
+                                 const std::vector<numeric_index_type> & rows,
+                                 const std::vector<numeric_index_type> & cols)
 {
+  libmesh_ignore(cols);
+
   const numeric_index_type n_rows = dm.m();
   const numeric_index_type n_cols = dm.n();
 
   libmesh_assert_equal_to (rows.size(), n_rows);
   libmesh_assert_equal_to (cols.size(), n_cols);
 
-  for (auto i = 0; i < dm.m(); i++)
-    for (auto j = 0; j < dm.n(); j++)
+  for (auto i = 0; i < n_rows; i++)
+    for (auto j = 0; j < n_cols; j++)
       _vector->add(rows[i], dm(i,j));
 }
 
@@ -220,25 +210,14 @@ void LumpedMatrix<T>::add_matrix(const DenseMatrix<T> & dm,
 
 
 template <typename T>
-void LumpedMatrix<T>::add_block_matrix(const DenseMatrix<T> & dm,
-                                      const std::vector<numeric_index_type> & brows,
-                                      const std::vector<numeric_index_type> & bcols)
+void LumpedMatrix<T>::add_block_matrix(const DenseMatrix<T> & /* dm */,
+                                       const std::vector<numeric_index_type> & /* brows */,
+                                       const std::vector<numeric_index_type> & /* bcols */)
 {
   libmesh_not_implemented();
 }
 
 
-
-
-
-template <typename T>
-void LumpedMatrix<T>::_get_submatrix(SparseMatrix<T> & submatrix,
-                                    const std::vector<numeric_index_type> & rows,
-                                    const std::vector<numeric_index_type> & cols,
-                                    const bool reuse_submatrix) const
-{
-  libmesh_not_implemented();
-}
 
 
 
@@ -251,7 +230,7 @@ void LumpedMatrix<T>::get_diagonal (NumericVector<T> & dest) const
 
 
 template <typename T>
-void LumpedMatrix<T>::get_transpose (SparseMatrix<T> & dest) const
+void LumpedMatrix<T>::get_transpose (SparseMatrix<T> & /* dest */) const
 {
   libmesh_not_implemented();
 }
@@ -269,7 +248,6 @@ void LumpedMatrix<T>::close ()
 template <typename T>
 void LumpedMatrix<T>::flush ()
 {
-  _vector->flush();
 }
 
 
@@ -285,7 +263,7 @@ numeric_index_type LumpedMatrix<T>::m () const
 template <typename T>
 numeric_index_type LumpedMatrix<T>::n () const
 {
-  return _n;
+  return _vector->size();
 }
 
 
@@ -308,9 +286,10 @@ numeric_index_type LumpedMatrix<T>::row_stop () const
 
 template <typename T>
 void LumpedMatrix<T>::set (const numeric_index_type i,
-                          const numeric_index_type j,
-                          const T value)
+                           const numeric_index_type j,
+                           const T value)
 {
+  libmesh_ignore(j);
   libmesh_assert(i == j);
 
   _vector->set(i, value);
@@ -320,9 +299,11 @@ void LumpedMatrix<T>::set (const numeric_index_type i,
 
 template <typename T>
 void LumpedMatrix<T>::add (const numeric_index_type i,
-                          const numeric_index_type j,
-                          const T value)
+                           const numeric_index_type /*j*/,
+                           const T value)
 {
+  std::cout<<"Adding: "<<i<<" "<<value<<std::endl;
+
   // This is how the lumping happens
   _vector->add(i, value);
 }
@@ -331,7 +312,7 @@ void LumpedMatrix<T>::add (const numeric_index_type i,
 
 template <typename T>
 void LumpedMatrix<T>::add_matrix(const DenseMatrix<T> & dm,
-                                const std::vector<numeric_index_type> & dof_indices)
+                                 const std::vector<numeric_index_type> & dof_indices)
 {
   this->add_matrix (dm, dof_indices, dof_indices);
 }
@@ -343,7 +324,7 @@ void LumpedMatrix<T>::add_matrix(const DenseMatrix<T> & dm,
 
 
 template <typename T>
-void LumpedMatrix<T>::add (const T a_in, SparseMatrix<T> & X_in)
+void LumpedMatrix<T>::add (const T /* a_in */, SparseMatrix<T> & /* X_in */)
 {
   libmesh_not_implemented();
 }
@@ -355,7 +336,10 @@ template <typename T>
 T LumpedMatrix<T>::operator () (const numeric_index_type i_in,
                                const numeric_index_type j_in) const
 {
+  libmesh_ignore(j_in);
   libmesh_assert(i_in == j_in);
+
+  std::cout<<*_vector<<std::endl;
 
   return (*_vector)(i_in);
 }
@@ -372,7 +356,7 @@ bool LumpedMatrix<T>::closed() const
 
 
 template <typename T>
-void LumpedMatrix<T>::swap(LumpedMatrix<T> & m_in)
+void LumpedMatrix<T>::swap(LumpedMatrix<T> & /* m_in */)
 {
   libmesh_not_implemented();
 }
@@ -384,6 +368,3 @@ void LumpedMatrix<T>::swap(LumpedMatrix<T> & m_in)
 template class LumpedMatrix<Number>;
 
 } // namespace libMesh
-
-
-#endif // #ifdef LIBMESH_HAVE_PETSC

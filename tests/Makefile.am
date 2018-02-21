@@ -54,6 +54,7 @@ unit_tests_sources = \
   numerics/parsed_fem_function_test.C \
   numerics/parsed_function_test.C \
   numerics/petsc_vector_test.C \
+  numerics/lumped_matrix_test.C \
   numerics/trilinos_epetra_vector_test.C \
   numerics/type_vector_test.h \
   numerics/vector_value_test.C \
