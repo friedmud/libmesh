@@ -376,6 +376,8 @@ void CheckpointIO::write (const std::string & name)
 
   for (const auto & my_pid : ids_to_write)
     {
+      libMesh::err << mesh.comm().rank() << ": " << my_pid << std::endl;
+
       auto file_name = split_file(name, use_n_procs, my_pid);
       Xdr io (file_name, this->binary() ? ENCODE : WRITE);
 
