@@ -496,10 +496,10 @@ BUILT_SOURCES = auto_ptr.h default_coupling.h dirichlet_boundaries.h \
 	libmesh.h libmesh_C_isnan.h libmesh_augment_std_namespace.h \
 	libmesh_base.h libmesh_common.h libmesh_documentation.h \
 	libmesh_exceptions.h libmesh_logging.h libmesh_singleton.h \
-	libmesh_version.h multi_predicates.h periodic_boundaries.h \
-	periodic_boundary.h periodic_boundary_base.h \
-	point_neighbor_coupling.h print_trace.h \
-	reference_counted_object.h reference_counter.h \
+	libmesh_version.h map_point_neighbor_coupling.h \
+	multi_predicates.h periodic_boundaries.h periodic_boundary.h \
+	periodic_boundary_base.h point_neighbor_coupling.h \
+	print_trace.h reference_counted_object.h reference_counter.h \
 	sibling_coupling.h single_predicates.h sparsity_pattern.h \
 	variable.h variant_filter_iterator.h enum_convergence_flags.h \
 	enum_eigen_solver_type.h enum_elem_quality.h enum_elem_type.h \
@@ -552,7 +552,28 @@ BUILT_SOURCES = auto_ptr.h default_coupling.h dirichlet_boundaries.h \
 	nemesis_io_helper.h off_io.h parallel_mesh.h patch.h \
 	postscript_io.h replicated_mesh.h serial_mesh.h \
 	sync_refinement_flags.h tecplot_io.h tetgen_io.h ucd_io.h \
-	unstructured_mesh.h unv_io.h vtk_io.h xdr_io.h \
+	unstructured_mesh.h unv_io.h vtk_io.h xdr_io.h compare_types.h \
+	ct_set.h ct_types.h dualderivatives.h \
+	dualdynamicsparsenumberarray.h \
+	dualdynamicsparsenumberarray_decl.h \
+	dualdynamicsparsenumbervector.h \
+	dualdynamicsparsenumbervector_decl.h dualexpression.h \
+	dualnamedarray.h dualnumber.h dualnumber_decl.h \
+	dualnumber_surrogate.h dualnumber_surrogate_decl.h \
+	dualnumberarray.h dualnumbervector.h dualshadow.h \
+	dualshadowdynamicsparsearray.h dualshadowdynamicsparsevector.h \
+	dualshadowsparsestruct.h dualshadowsparsevector.h \
+	dualshadowvector.h dualsparsenumberarray.h \
+	dualsparsenumberstruct.h dualsparsenumbervector.h \
+	dynamicsparsenumberarray.h dynamicsparsenumberarray_decl.h \
+	dynamicsparsenumberbase.h dynamicsparsenumberbase_decl.h \
+	dynamicsparsenumbervector.h dynamicsparsenumbervector_decl.h \
+	metaphysicl_asserts.h metaphysicl_cast.h \
+	metaphysicl_exceptions.h metaphysicl_version.h \
+	metaprogramming.h namedindexarray.h nddualnumber.h \
+	numberarray.h numbervector.h physics.h raw_type.h \
+	shadownumber.h sparsenumberarray.h sparsenumberstruct.h \
+	sparsenumberutils.h sparsenumbervector.h testable.h \
 	analytic_function.h composite_fem_function.h \
 	composite_function.h const_fem_function.h const_function.h \
 	coupling_matrix.h dense_matrix.h dense_matrix_base.h \
@@ -942,6 +963,9 @@ libmesh_singleton.h: $(top_srcdir)/include/base/libmesh_singleton.h
 	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
 
 libmesh_version.h: $(top_srcdir)/include/base/libmesh_version.h
+	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
+
+map_point_neighbor_coupling.h: $(top_srcdir)/include/base/map_point_neighbor_coupling.h
 	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
 
 multi_predicates.h: $(top_srcdir)/include/base/multi_predicates.h
@@ -1479,6 +1503,150 @@ vtk_io.h: $(top_srcdir)/include/mesh/vtk_io.h
 	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
 
 xdr_io.h: $(top_srcdir)/include/mesh/xdr_io.h
+	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
+
+compare_types.h: $(top_srcdir)/include/metaphysicl/compare_types.h
+	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
+
+ct_set.h: $(top_srcdir)/include/metaphysicl/ct_set.h
+	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
+
+ct_types.h: $(top_srcdir)/include/metaphysicl/ct_types.h
+	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
+
+dualderivatives.h: $(top_srcdir)/include/metaphysicl/dualderivatives.h
+	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
+
+dualdynamicsparsenumberarray.h: $(top_srcdir)/include/metaphysicl/dualdynamicsparsenumberarray.h
+	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
+
+dualdynamicsparsenumberarray_decl.h: $(top_srcdir)/include/metaphysicl/dualdynamicsparsenumberarray_decl.h
+	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
+
+dualdynamicsparsenumbervector.h: $(top_srcdir)/include/metaphysicl/dualdynamicsparsenumbervector.h
+	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
+
+dualdynamicsparsenumbervector_decl.h: $(top_srcdir)/include/metaphysicl/dualdynamicsparsenumbervector_decl.h
+	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
+
+dualexpression.h: $(top_srcdir)/include/metaphysicl/dualexpression.h
+	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
+
+dualnamedarray.h: $(top_srcdir)/include/metaphysicl/dualnamedarray.h
+	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
+
+dualnumber.h: $(top_srcdir)/include/metaphysicl/dualnumber.h
+	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
+
+dualnumber_decl.h: $(top_srcdir)/include/metaphysicl/dualnumber_decl.h
+	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
+
+dualnumber_surrogate.h: $(top_srcdir)/include/metaphysicl/dualnumber_surrogate.h
+	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
+
+dualnumber_surrogate_decl.h: $(top_srcdir)/include/metaphysicl/dualnumber_surrogate_decl.h
+	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
+
+dualnumberarray.h: $(top_srcdir)/include/metaphysicl/dualnumberarray.h
+	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
+
+dualnumbervector.h: $(top_srcdir)/include/metaphysicl/dualnumbervector.h
+	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
+
+dualshadow.h: $(top_srcdir)/include/metaphysicl/dualshadow.h
+	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
+
+dualshadowdynamicsparsearray.h: $(top_srcdir)/include/metaphysicl/dualshadowdynamicsparsearray.h
+	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
+
+dualshadowdynamicsparsevector.h: $(top_srcdir)/include/metaphysicl/dualshadowdynamicsparsevector.h
+	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
+
+dualshadowsparsestruct.h: $(top_srcdir)/include/metaphysicl/dualshadowsparsestruct.h
+	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
+
+dualshadowsparsevector.h: $(top_srcdir)/include/metaphysicl/dualshadowsparsevector.h
+	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
+
+dualshadowvector.h: $(top_srcdir)/include/metaphysicl/dualshadowvector.h
+	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
+
+dualsparsenumberarray.h: $(top_srcdir)/include/metaphysicl/dualsparsenumberarray.h
+	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
+
+dualsparsenumberstruct.h: $(top_srcdir)/include/metaphysicl/dualsparsenumberstruct.h
+	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
+
+dualsparsenumbervector.h: $(top_srcdir)/include/metaphysicl/dualsparsenumbervector.h
+	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
+
+dynamicsparsenumberarray.h: $(top_srcdir)/include/metaphysicl/dynamicsparsenumberarray.h
+	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
+
+dynamicsparsenumberarray_decl.h: $(top_srcdir)/include/metaphysicl/dynamicsparsenumberarray_decl.h
+	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
+
+dynamicsparsenumberbase.h: $(top_srcdir)/include/metaphysicl/dynamicsparsenumberbase.h
+	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
+
+dynamicsparsenumberbase_decl.h: $(top_srcdir)/include/metaphysicl/dynamicsparsenumberbase_decl.h
+	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
+
+dynamicsparsenumbervector.h: $(top_srcdir)/include/metaphysicl/dynamicsparsenumbervector.h
+	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
+
+dynamicsparsenumbervector_decl.h: $(top_srcdir)/include/metaphysicl/dynamicsparsenumbervector_decl.h
+	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
+
+metaphysicl_asserts.h: $(top_srcdir)/include/metaphysicl/metaphysicl_asserts.h
+	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
+
+metaphysicl_cast.h: $(top_srcdir)/include/metaphysicl/metaphysicl_cast.h
+	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
+
+metaphysicl_exceptions.h: $(top_srcdir)/include/metaphysicl/metaphysicl_exceptions.h
+	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
+
+metaphysicl_version.h: $(top_srcdir)/include/metaphysicl/metaphysicl_version.h
+	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
+
+metaprogramming.h: $(top_srcdir)/include/metaphysicl/metaprogramming.h
+	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
+
+namedindexarray.h: $(top_srcdir)/include/metaphysicl/namedindexarray.h
+	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
+
+nddualnumber.h: $(top_srcdir)/include/metaphysicl/nddualnumber.h
+	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
+
+numberarray.h: $(top_srcdir)/include/metaphysicl/numberarray.h
+	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
+
+numbervector.h: $(top_srcdir)/include/metaphysicl/numbervector.h
+	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
+
+physics.h: $(top_srcdir)/include/metaphysicl/physics.h
+	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
+
+raw_type.h: $(top_srcdir)/include/metaphysicl/raw_type.h
+	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
+
+shadownumber.h: $(top_srcdir)/include/metaphysicl/shadownumber.h
+	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
+
+sparsenumberarray.h: $(top_srcdir)/include/metaphysicl/sparsenumberarray.h
+	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
+
+sparsenumberstruct.h: $(top_srcdir)/include/metaphysicl/sparsenumberstruct.h
+	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
+
+sparsenumberutils.h: $(top_srcdir)/include/metaphysicl/sparsenumberutils.h
+	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
+
+sparsenumbervector.h: $(top_srcdir)/include/metaphysicl/sparsenumbervector.h
+	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
+
+testable.h: $(top_srcdir)/include/metaphysicl/testable.h
 	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
 
 analytic_function.h: $(top_srcdir)/include/numerics/analytic_function.h
