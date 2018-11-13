@@ -202,6 +202,19 @@ public:
    * after a redistribution is complete.
    */
   virtual void delete_remote_elements () {};
+
+  /**
+   * Set the name of this object (for better error messages)
+   */
+  void set_name(const std::string & name) { _name = name; }
+
+  /**
+   * Get the name of this object
+   */
+  const std::string & get_name() { return _name; }
+
+protected:
+  std::string _name;
 };
 
 } // namespace libMesh

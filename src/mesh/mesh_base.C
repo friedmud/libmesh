@@ -44,7 +44,7 @@
 namespace libMesh
 {
 
-
+bool MeshBase::use_default_ghosting = true;
 
 // ------------------------------------------------------------
 // MeshBase class member functions
@@ -67,7 +67,10 @@ MeshBase::MeshBase (const Parallel::Communicator & comm_in,
   _default_ghosting(new GhostPointNeighbors(*this))
 {
   _elem_dims.insert(d);
-  _ghosting_functors.insert(_default_ghosting.get());
+
+  if (use_default_ghosting)
+    _ghosting_functors.insert(_default_ghosting.get());
+
   libmesh_assert_less_equal (LIBMESH_DIM, 3);
   libmesh_assert_greater_equal (LIBMESH_DIM, d);
   libmesh_assert (libMesh::initialized());

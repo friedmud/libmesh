@@ -1362,6 +1362,10 @@ public:
    */
   std::unique_ptr<BoundaryInfo> boundary_info;
 
+  /**
+   * Whether or not any ghosting will be done by default.
+   */
+  static bool use_default_ghosting;
 
 protected:
 

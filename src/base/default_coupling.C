@@ -60,7 +60,7 @@ void DefaultCoupling::mesh_reinit()
 
   // If we do have periodic boundary conditions, we'll need a master
   // point locator, so we'd better have a mesh to build it on.
-  libmesh_assert(_mesh);
+  libmesh_assert_msg(_mesh, get_name() + ": mesh pointer is null but periodic BCs exist");
 
   // Make sure an up-to-date master point locator has been
   // constructed; we'll need to grab sub-locators soon.
@@ -77,18 +77,6 @@ void DefaultCoupling::operator()
 {
   LOG_SCOPE("operator()", "DefaultCoupling");
 
-#ifdef LIBMESH_ENABLE_PERIODIC
-  bool check_periodic_bcs =
-    (_periodic_bcs && !_periodic_bcs->empty());
-
-  std::unique_ptr<PointLocatorBase> point_locator;
-  if (check_periodic_bcs)
-    {
-      libmesh_assert(_mesh);
-      point_locator = _mesh->sub_point_locator();
-    }
-#endif
-
   if (!this->_n_levels)
     {
       for (const auto & elem : as_range(range_begin, range_end))
@@ -96,6 +84,18 @@ void DefaultCoupling::operator()
           coupled_elements.insert (std::make_pair(elem,_dof_coupling));
       return;
     }
+
+#ifdef LIBMESH_ENABLE_PERIODIC
+  bool check_periodic_bcs =
+    (_periodic_bcs && !_periodic_bcs->empty());
+
+  std::unique_ptr<PointLocatorBase> point_locator;
+  if (check_periodic_bcs)
+    {
+      libmesh_assert_msg(_mesh, get_name() + ": mesh pointer is null but periodic BCs exist");
+      point_locator = _mesh->sub_point_locator();
+    }
+#endif
 
   typedef std::unordered_set<const Elem*> set_type;
   set_type next_elements_to_check(range_begin, range_end);
@@ -133,7 +133,7 @@ void DefaultCoupling::operator()
               // We might still have a periodic neighbor here
               else if (check_periodic_bcs)
                 {
-                  libmesh_assert(_mesh);
+                  libmesh_assert_msg(_mesh, get_name() + ": mesh pointer is null but periodic BCs exist");
 
                   neigh = elem->topological_neighbor
                     (s, *_mesh, *point_locator, _periodic_bcs);

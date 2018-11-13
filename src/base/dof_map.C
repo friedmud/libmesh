@@ -191,7 +191,9 @@ DofMap::DofMap(const unsigned int number,
 #endif
 
   this->add_coupling_functor(*_default_coupling);
-  this->add_algebraic_ghosting_functor(*_default_evaluating);
+
+  if (MeshBase::use_default_ghosting)
+    this->add_algebraic_ghosting_functor(*_default_evaluating);
 }
 
 
@@ -865,7 +867,9 @@ void DofMap::clear()
 
     // _default_evaluating->set_dof_coupling(this->_dof_coupling);
     _default_evaluating->set_n_levels(1);
-    this->add_algebraic_ghosting_functor(*_default_evaluating);
+
+    if (MeshBase::use_default_ghosting)
+      this->add_algebraic_ghosting_functor(*_default_evaluating);
   }
 
   _variables.clear();
@@ -1806,7 +1810,9 @@ void DofMap::remove_default_ghosting()
 void DofMap::add_default_ghosting()
 {
   this->add_coupling_functor(this->default_coupling());
-  this->add_algebraic_ghosting_functor(this->default_algebraic_ghosting());
+
+  if (MeshBase::use_default_ghosting)
+    this->add_algebraic_ghosting_functor(this->default_algebraic_ghosting());
 }
 
 
@@ -1816,7 +1822,7 @@ DofMap::add_coupling_functor(GhostingFunctor & coupling_functor,
                              bool to_mesh)
 {
   _coupling_functors.insert(&coupling_functor);
-  if (to_mesh)
+  if (to_mesh && MeshBase::use_default_ghosting)
     _mesh.add_ghosting_functor(coupling_functor);
 }
 
@@ -1836,7 +1842,7 @@ DofMap::add_algebraic_ghosting_functor(GhostingFunctor & evaluable_functor,
                                        bool to_mesh)
 {
   _algebraic_ghosting_functors.insert(&evaluable_functor);
-  if (to_mesh)
+  if (to_mesh && MeshBase::use_default_ghosting)
     _mesh.add_ghosting_functor(evaluable_functor);
 }
 
