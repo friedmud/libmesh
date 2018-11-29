@@ -299,6 +299,8 @@ void push_parallel_vector_data(const Communicator & comm,
 
   // Reset the send mode
   const_cast<Communicator &>(comm).send_mode(old_send_mode);
+
+  comm.barrier();
 }
 
 
@@ -395,6 +397,8 @@ void push_parallel_vector_data(const Communicator & comm,
   // Wat on all the sends to complete
   for (auto & req : reqs)
     req.wait();
+
+  comm.barrier();
 }
 
 
@@ -433,6 +437,8 @@ void pull_parallel_vector_data(const Communicator & comm,
     };
 
   push_parallel_vector_data (comm, response_data, action_functor);
+
+  comm.barrier();
 }
 
 
@@ -511,6 +517,7 @@ void pull_parallel_vector_data(const Communicator & comm,
     }
 
   wait(response_reqs);
+  comm.barrier();
 }
 
 
