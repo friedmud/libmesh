@@ -1719,7 +1719,7 @@ LinearConvergenceReason PetscLinearSolver<T>::get_converged_reason() const
     case KSP_DIVERGED_PCSETUP_FAILED   : return DIVERGED_PCSETUP_FAILED;
 // PETSc master and future PETSc
 #else
-    case KSP_DIVERGED_PC_FAILED        : return DIVERGED_PCSETUP_FAILED;
+    case KSP_DIVERGED_PCSETUP_FAILED        : return DIVERGED_PCSETUP_FAILED;
 #endif
 #endif
     default :
