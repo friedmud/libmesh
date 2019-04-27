@@ -28,6 +28,7 @@
 // C++ includes
 #include <cstddef>
 #include <map>
+#include <unordered_map>
 #include <set>
 #include <vector>
 #include <tuple>
@@ -898,31 +899,31 @@ private:
    * Data structure that maps nodes in the mesh
    * to boundary ids.
    */
-  std::multimap<const Node *,
-                boundary_id_type> _boundary_node_id;
+  std::unordered_multimap<const Node *,
+                          boundary_id_type> _boundary_node_id;
 
   /**
    * Data structure that maps edges of elements
    * to boundary ids. This is only relevant in 3D.
    */
-  std::multimap<const Elem *,
-                std::pair<unsigned short int, boundary_id_type>>
+  std::unordered_multimap<const Elem *,
+                          std::pair<unsigned short int, boundary_id_type>>
   _boundary_edge_id;
 
   /**
    * Data structure that maps faces of shell elements
    * to boundary ids. This is only relevant for shell elements.
    */
-  std::multimap<const Elem *,
-                std::pair<unsigned short int, boundary_id_type>>
+  std::unordered_multimap<const Elem *,
+                          std::pair<unsigned short int, boundary_id_type>>
   _boundary_shellface_id;
 
   /**
    * Data structure that maps sides of elements
    * to boundary ids.
    */
-  std::multimap<const Elem *,
-                std::pair<unsigned short int, boundary_id_type>>
+  std::unordered_multimap<const Elem *,
+                          std::pair<unsigned short int, boundary_id_type>>
   _boundary_side_id;
 
   /**

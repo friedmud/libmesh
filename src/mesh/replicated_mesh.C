@@ -1332,7 +1332,13 @@ void ReplicatedMesh::stitching_helper (const ReplicatedMesh * other_mesh,
         }
     }
 
+  // Turn off repartitioning
+  auto was_skipping = this->skip_partitioning();
+  this->skip_partitioning(true);
+
   this->prepare_for_use( /*skip_renumber_nodes_and_elements= */ false, skip_find_neighbors);
+
+  this->skip_partitioning(was_skipping);
 
   // After the stitching, we may want to clear boundary IDs from element
   // faces that are now internal to the mesh
